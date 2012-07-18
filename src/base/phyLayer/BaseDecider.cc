@@ -30,7 +30,8 @@ simtime_t BaseDecider::processSignal(AirFrame* frame) {
 
 simtime_t BaseDecider::processNewSignal(AirFrame* frame) {
 	if(currentSignal.first != 0) {
-		deciderEV << "Already receiving another AirFrame!" << endl;
+	  deciderEV << "Already receiving another AirFrame!" << endl;
+//    EV << "Already receiving another AirFrame!" << frame->getId() << endl;
 		return notAgain;
 	}
 

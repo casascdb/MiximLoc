@@ -2,7 +2,10 @@ package org.mixim.examples.ieee802154Narrow;
 
 import org.mixim.base.connectionManager.ConnectionManager;
 import org.mixim.base.modules.BaseWorldUtility;
-
+import org.mixim.modules.Localization.WorldUtilityStats;
+import org.mixim.modules.Localization.PhyMacNode;
+import org.mixim.modules.Localization.PhyMacAnchor;
+import org.mixim.modules.Localization.PhyMacComputer;
 
 network ieee802154Narrow
 {

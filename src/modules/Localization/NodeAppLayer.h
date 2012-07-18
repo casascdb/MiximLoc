@@ -1,0 +1,203 @@
+#ifndef NODEAPPLAYER_H_
+#define NODEAPPLAYER_H_
+
+#include "AppLayer.h"
+
+#include <EnergyConsumption.h>
+
+class NodeAppLayer : public AppLayer
+{
+public:
+
+	enum MobileNodeType {				// Defines the four possible types of Mobile Nodes
+
+		LISTEN_AND_REPORT = 1,
+		LISTEN_AND_CALCULATE,
+		VIP_TRANSMIT,
+		LISTEN_TRANSMIT_REPORT
+	};
+
+	typedef struct {					// Struct to store the RSSI info, we add all of them and then at the end we divide to get the mean, each position is from an AN 0, 1, 2 ... 24
+		double RSSIAdition;
+		int counterRSSI;
+	} RSSIs;
+
+protected:
+
+	int nodeConfig;						// Which of the four types is the MN, check the MobileNodeType to see the possible types
+
+	int offsetPhases; 					// Number of Offset full phases to start the first active full phase (to avoid that all MN transmit at the same full phase)
+	int offsetSyncPhases;				// Number of sync phases we don't read at the beggining of the first active phase, it can be 0, 1 or 2, with 3 we would set an active phase less
+	int activePhases; 					// Configuration number of active phases, where we perform the standard functions of every type
+	int inactivePhases; 				// Configuration number of inactive phases, where we do nothing or extra reports if scheduled
+	int offsetBroadcast;				// Number of Offset full phases in which we don't send broadcast when using MODE 4
+	bool activePhase; 					// To sign if we are in an active phase or not
+	bool syncListen;					// If true we will listen to the sync phase, if false we won't take any RSSI value
+
+	int offsetReportPhases; 			// Number of Offset full phases to start the first extra report full phase (to avoid that all MN transmit at the same full phase)
+	int reportPhases; 					// Configuration number to know every how many full phases do we make an extra report
+	bool makeExtraReport; 				// True we make it (listen sync and report), false we don't (just listen sync, for synchronization just)
+	bool syncListenReport;				// If true we will listen to the sync phase, if false we won't take any RSSI value (for the extra report)
+	int askFrequency;					// Every askFrequency Extra Reports we activate the ASK flag to make a request
+	int askFrequencyCounter;			// Counter to know when do we reach the askFrequency and mark the packet with askForRequest Flag
+	bool askForRequest;					// This FLAG in the packet tells the AN that in the next full phase (period) the Mobile Node will ask for some information and the AN has to have it ready
+	bool requestPacket;					// This FLAG in the packet tells the AN that it has to answer the Mobile Node with some info and if it doesn't have anything ask anyway saying the info is not yet there
+	int waitForAnchor;					// This value will be set to the MAC of the AN we are waiting the packet from when we make a request
+	int anchorDestinationRequest;		// Here we would save the MAC address of the Anchor where we send the report to have it when we send the request in case we delete the RSSI values
+
+	int offsetPhasesCounter;			// Counter to know when do we start the first active phase
+	int activePhasesCounter; 			// Counter to know when do we reach the maximum active full phases
+	int inactivePhasesCounter; 			// Counter to know when do we reach the maximum inactive full phases
+	int offsetReportPhasesCounter;		// Counter to know when do we start the first extra report phase
+	int reportPhasesCounter;			// Counter to know when do we have to make an extra report phase
+	int offsetBroadcastCounter;			// Counter to know when do she start to send Broadcast in the MN type 4
+
+	int numberOfBroadcasts; 			// Number of broadcasts (VIP or normal) done by a MN type 3 or 4
+	int numberOfBroadcastsCounter; 		// Counter to know when we reach the numberOfBroadcasts
+	simtime_t* randomTransTimes; 		// Vector to store the times when the broadcasts are transmitted, it is calculated before
+	simtime_t minimumSeparation; 		// Minimum separation between broadcasts to be able to transmit it without problems
+	bool minimumDistanceFulfilled; 		// Boolean to check if the minimum distance is fulfilled
+	simtime_t type4ReportTime; 			// Time when the report for MN type 4 is scheduled, to take into account to distribute the broadcasts with a minimum distance
+
+	int positionsToSave; 				// Number of positions to save for the MN in Type 2
+	Coord* positionFIFO; 				// Vector where we save the last positions from this Mobile Node
+	int positionsSavedCounter; 			// Counter where we save the number of elements of the array
+	bool isProcessing; 					// To check if we are processing a position in Type 2, during this time we cannot send a Report
+	simtime_t processingTime;			// Time we are processing the packets to calculate the position while we cannot transmit
+	simtime_t endProcessingTime;		// End of this time, used to schedule an event to indicate that we already can send packets
+	simtime_t waitForRequestTime;		// Maximum time we wait till we get the answer from AN to our request
+
+	simtime_t timeSleepToRX;			// Time needed in transceiver to go from Sleep state to Receive state
+	simtime_t timeRXToSleep;			// Time needed in transceiver to go from Receive state to Sleep state
+	simtime_t timeToSend;				// Temporal time to use in schedule and wakeUp
+	bool canSleep;						// When there are several conditions to sleep, we can use this variable
+
+	bool centralized; 					// In Type 1, who calculates the position? True = Computer, False = AN Selected
+
+	RSSIs* listRSSI;					// Vector where we save all the RSSI values read from the sync packets in sync phase
+	int indiceRSSI;						// Used to get the index of the AN or computer where we get the RSSI from to use it as index for the previous vector (computer = numberOfAnchors)
+
+	simtime_t* listSleepTimes;			// List with all the next sleep moments
+	int sleepTimesCounter;				// Counter to know how many times do we still have
+
+	simtime_t* listWakeUpTimes;			// List with all the next wake up moments
+	int wakeUpTimesCounter;				// Counter to know how many times do we still have
+	bool* wakeUpTransmitting;			// List to control if listWakeUpTimes wake up is to transmit or to receive
+
+	cMessage *sendReportWithCSMA;		// Send Report message
+	cMessage *sendExtraReportWithCSMA;	// Send Extra report message
+	cMessage *sendSyncTimerWithCSMA;	// Broadcast messages for Type 3 and 4
+	cMessage *calculatePosition;		// Calculate Node Position
+	cMessage *waitForRequest;			// Waiting for Request Answer
+	cMessage *wakeUp;					// To wake up the transceiver some time before transmission
+	cMessage *sleep;					// To sleep the transceiver
+
+	//BORRAR CUANDO ESTÉ TODO PROBADO
+	cMessage *PUTEAR;
+
+	NicEntry* node;						// Pointer to the NIC of this anchor to access some NIC variables
+
+	/** @brief Handler to the physical layer.*/
+	MacToPhyInterface* phy;
+
+	EnergyConsumption* energy;			// Pointer to the Energy module
+
+	int broadPriority;					// Priority of broadcast messages in current phase
+
+	double* anchorSuccess;				// List to store the success in a phase of the anchors we can listen to
+	double nodeSuccess;					// Variable to save the Tx success in the former phase
+	double lastNodeSuccess;				// Variable to save the last registered Tx success attained
+	double currentEnergy;				// Variable to save the level of battery
+	double consum;						// Variable to save the energy consumed by the node per phase
+	int anchorSelected;					// The id of the anchor where was sent the packets in the last phase
+
+	int modeList;						// Index to identify the possible configuration list
+	int frequency;						// Number of reducing frequencies allowed
+	int confIndex;						// Node mode to use
+	int freqIndex;						// Reducing frequency in use
+	int numConfigs;						// Amount of configurations in the list
+	int* mode;							// List of nodes modes
+	bool* centralizedMode;				// List of calculating behavior
+	int* numActivePhases;				// List of active phases to be set
+	int* numInactivePhases;				// List of inactive phases to be set
+	int* numSyncOffset;					// List of sync offsets to be set
+	int* numBroadcastOffset;			// List of broadcasts to be offset
+	double* energyMin;					// List of energy thresholds
+	double* modeConsum;					// List of consumption by configuration
+	double* effectivenessMin;			// List of effectiveness thresholds
+	int* numReport;						// List of extra reports ratio
+	double thresEnergy;					// Hysteresis energy central point
+	double thresEffec;					// Hysteresis effectiveness central point
+
+	int numConfs;						// To save the number of time the configuration algorithm is consulted
+	int numOpt;							// To save the number of times an optimal configuration has been taken
+	int numSubOpt;						// To save the number of times a suboptimal configuration has been taken
+
+	double* currentEffectiveness;		// Statistical variable to save the instant effectiveness for the node
+	double* currentBattery;				// Statistical variable to save the instant battery level
+	double* currentMode;				// Statistical variable to save the instant mode used
+	double* currentFrequency;			// Statistical variable to save the instant frequency used
+	double* currentTime;				// Statistical variable to save the simulation time the statistic samples are taken
+	double* currentThEn;				// Statistical variable to save the instant central hysteresis point for energy
+	double* currentThEf;				// Statistical variable to save the instant central hysteresis point for effectiveness
+	int histogramIndex;					// Statistical variable to save the index of the statistic samples taken
+
+	double timeAlive;					// Statistical variable to save the amount of time a node was operative
+	double *effecByAnchor;				// Statistical variable to save the instant effectiveness listened from the surrounding anchors
+
+public:
+	virtual ~NodeAppLayer();
+
+	virtual void initialize(int stage);
+
+	virtual void finish();
+
+protected:
+	/** @brief Handle self messages such as timer... */
+	virtual void handleSelfMsg(cMessage *msg);
+
+	/** @brief Handle messages from lower layer */
+	virtual void handleLowerMsg(cMessage *msg);
+
+	/** @brief Handle control messages from lower layer */
+	virtual void handleLowerControl(cMessage *msg);
+
+	/** @brief Handle messages from upper layer */
+	virtual void handleUpperMsg(cMessage *msg)
+	{
+		opp_error("NodeAppLayer has no upper layers!");
+		delete msg;
+	}
+
+	/** @brief Handle control messages from upper layer */
+	virtual void handleUpperControl(cMessage *msg)
+	{
+		opp_error("NodeAppLayer has no upper layers!");
+		delete msg;
+	}
+
+	/** @brief Send a broadcast message to lower layer. */
+	virtual void sendBroadcast();
+
+	// Send a report to the lower layer
+	void sendReport();
+
+	// Operations for our FIFO where we stor the positions calculated in mobile node type 2
+	void insertElementInFIFO(Coord position);
+	void insertElementInFIFO(double x, double y);
+	Coord extractElementFIFO();
+
+	// Operations to create and order our random transmission times vector for the broadcasts in type 3 and 4
+	void createRandomBroadcastTimes(simtime_t maxTime);
+	void orderVectorMinToMax(simtime_t* times, int counter);
+	void orderVectorMinToMax(simtime_t* times, bool* transmitting, int counter);
+	bool findElement(simtime_t* times, simtime_t time, int counter);
+
+	// Functions to sleep and wake up the node, just not to repeat code all the time
+	void goToSleep(simtime_t time);
+	void goToWakeUp(simtime_t time, bool transmitting);
+
+	void changeConfig();
+};
+
+#endif

@@ -367,12 +367,17 @@ void BasePhyLayer::handleAirFrame(AirFrame* frame) {
 	//TODO: ask jerome to set air frame priority in his UWBIRPhy
 	//assert(frame->getSchedulingPriority() == airFramePriority);
 
+    int nodeIndex = getParentModule()->getParentModule()->getIndex(); // MOD
+    int nodeID = getParentModule()->getParentModule()->getId(); // MOD
+    int frameIndex = frame->getId(); // MOD
+
 	switch(frame->getState()) {
 	case START_RECEIVE:
 		handleAirFrameStartReceive(frame);
 		break;
 
 	case RECEIVING: {
+
 		handleAirFrameReceiving(frame);
 		break;
 	}

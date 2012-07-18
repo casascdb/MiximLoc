@@ -97,7 +97,7 @@ void BaseConnectionManager::initialize(int stage)
 		for (int i = 0; i < gridDim.x; ++i) {	//fill the grid with copies of
 			nicGrid.push_back(matrix);			//the matrix.
 		}
-		ccEV << " using " << gridDim.x << "x" <<
+		EV << " using " << gridDim.x << "x" <<
 							 gridDim.y << "x" <<
 							 gridDim.z << " grid" << endl;
 
@@ -133,7 +133,7 @@ void BaseConnectionManager::initialize(int stage)
 		assert(GridCoord(*playgroundSize, findDistance).x == gridDim.x - 1);
 		assert(GridCoord(*playgroundSize, findDistance).y == gridDim.y - 1);
 		assert(GridCoord(*playgroundSize, findDistance).z == gridDim.z - 1);
-		ccEV << "findDistance is " << findDistance.info() << endl;
+		EV << "findDistance is " << findDistance.info() << endl;
 	}
 	else if (stage == 1)
 	{
@@ -312,7 +312,7 @@ void BaseConnectionManager::updateNicConnections(NicEntries& nmap, BaseConnectio
         if ( inRange && !connected ) {
             // nodes within communication range: connect
             // nodes within communication range && not yet connected
-            ccEV << "nic #" << id << " and #" << nic_i->nicId
+            EV << "nic #" << id << " and #" << nic_i->nicId
             	 << " are in range" << endl;
             nic->connectTo( nic_i );
             nic_i->connectTo( nic );
@@ -320,7 +320,7 @@ void BaseConnectionManager::updateNicConnections(NicEntries& nmap, BaseConnectio
         else if ( !inRange && connected ) {
             // out of range: disconnect
             // out of range, and still connected
-            ccEV << "nic #" << id << " and #" << nic_i->nicId
+            EV << "nic #" << id << " and #" << nic_i->nicId
             	 << " are NOT in range" << endl;
             nic->disconnectFrom( nic_i );
             nic_i->disconnectFrom( nic );

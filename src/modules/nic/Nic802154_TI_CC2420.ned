@@ -50,14 +50,14 @@ module Nic802154_TI_CC2420 extends WirelessNicBattery
         phy.headerLength = 48 bit; // ieee 802.15.4                
         phy.thermalNoise = -110 dBm;
         // From TI CC1100 datasheet rev. C
-        phy.timeSleepToRX = 0.00188 s;
-        phy.timeSleepToTX = 0.00208 s;
+        phy.timeSleepToRX = 0 s;//0.00188 s;
+        phy.timeSleepToTX = 0 s;//0.00208 s;
         phy.timeRXToTX = 0.000192 s;
         phy.timeTXToRX = 0.000192 s;
-        phy.timeRXToSleep = 0.00094 s;
-        phy.timeTXToSleep = 0.00094 s;
+        phy.timeRXToSleep = 0 s;//0.00094 s;
+        phy.timeTXToSleep = 0 s;//0.00094 s;
 
         mac.rxSetupTime = 0 s; // 0.001792 s;
-        mac.txPower = default(1 mW);
+        mac.txPower = default(100 mW);
 }
 

@@ -84,6 +84,9 @@ simple csma extends BaseMacLayer
         double macMinBE = default(3);
         // maximum backoff exponent (for exponential backoff method only)
         double macMaxBE = default(8);
-
+        
+      	//modified by Victor
+		bool ReceptionOnBackoff = default(false);
+		bool TransmitOnReception = default(false);
 }
 
